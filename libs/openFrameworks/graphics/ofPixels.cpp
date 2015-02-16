@@ -123,9 +123,11 @@ static ofImageType ofImageTypeFromPixelFormat(ofPixelFormat pixelFormat){
 	case OF_PIXELS_GRAY:
 		return OF_IMAGE_GRAYSCALE;
 		break;
+	case OF_PIXELS_BGR:
 	case OF_PIXELS_RGB:
 		return OF_IMAGE_COLOR;
 		break;
+	case OF_PIXELS_BGRA:
 	case OF_PIXELS_RGBA:
 		return OF_IMAGE_COLOR_ALPHA;
 		break;
@@ -509,49 +511,13 @@ int ofPixels_<PixelType>::getPixelIndex(int x, int y) const {
 }
 
 template<typename PixelType>
+ofColor_<PixelType> ofPixels_<PixelType>::getColor(int index) const {
+	return Pixel(pixels + index,getNumChannels(),pixelFormat).getColor();
+}
+
+template<typename PixelType>
 ofColor_<PixelType> ofPixels_<PixelType>::getColor(int x, int y) const {
-	ofColor_<PixelType> c;
-	int index = getPixelIndex(x, y);
-
-	switch(pixelFormat){
-		case OF_PIXELS_RGB:
-			c.set( pixels[index], pixels[index+1], pixels[index+2] );
-			break;
-		case OF_PIXELS_BGR:
-			c.set( pixels[index+2], pixels[index+1], pixels[index] );
-			break;
-		case OF_PIXELS_RGBA:
-			c.set( pixels[index], pixels[index+1], pixels[index+2], pixels[index+3] );
-			break;
-		case OF_PIXELS_BGRA:
-			c.set( pixels[index+2], pixels[index+1], pixels[index], pixels[index+3] );
-			break;
-		case OF_PIXELS_GRAY:
-			c.set( pixels[index] );
-			break;
-		case OF_PIXELS_GRAY_ALPHA:
-			c.set( pixels[index], pixels[index], pixels[index], pixels[index+1] );
-			break;
-		case OF_PIXELS_RGB565:
-		case OF_PIXELS_NV12:
-		case OF_PIXELS_NV21:
-		case OF_PIXELS_YV12:
-		case OF_PIXELS_I420:
-		case OF_PIXELS_YUY2:
-		case OF_PIXELS_UYVY:
-		case OF_PIXELS_Y:
-		case OF_PIXELS_U:
-		case OF_PIXELS_V:
-		case OF_PIXELS_UV:
-		case OF_PIXELS_VU:
-		case OF_PIXELS_UNKNOWN:
-		default:
-			ofLogWarning() << "returning color not supported yet for " << ofToString(pixelFormat) << " format";
-			return 0;
-			break;
-	}
-
-	return c;
+	return getColor(getPixelIndex(x, y));
 }
 
 template<typename PixelType>
@@ -1125,14 +1091,20 @@ void ofPixels_<PixelType>::mirrorTo(ofPixels_<PixelType> & dst, bool vertically,
 
 	int bytesPerPixel = getNumChannels();
 
-	if (! (vertically && horizontal)){
-		int wToDo = horizontal ? width/2 : width;
-		int hToDo = vertically ? height/2 : height;
+	if(vertically && !horizontal){
+		ofPixels_<PixelType>::Lines dstLines = dst.getLines();
+		ofPixels_<PixelType>::ConstLine lineSrc = getConstLines().begin();
+		ofPixels_<PixelType>::Line line = --dstLines.end();
 
+		for(; line>=dstLines.begin(); --line, ++lineSrc){
+			memcpy(line.begin(),lineSrc.begin(),line.getStride());
+		}
+	}else if (!vertically && horizontal){
+		int wToDo = width/2;
+		int hToDo = height;
 		for (int i = 0; i < wToDo; i++){
 			for (int j = 0; j < hToDo; j++){
-
-				int pixelb = (vertically ? (height - j - 1) : j) * width + (horizontal ? (width - i - 1) : i);
+				int pixelb = i;
 				int pixela = j*width + i;
 				for (int k = 0; k < bytesPerPixel; k++){
 					dst[pixela*bytesPerPixel + k] = pixels[pixelb*bytesPerPixel + k];
