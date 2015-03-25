@@ -174,7 +174,7 @@ bool ofGstUtils::setPipelineWithSink(string pipeline, string sinkname, bool isSt
 
 	GError * error = NULL;
 	gstPipeline = gst_parse_launch (pipeline.c_str(), &error);
-
+	g_object_ref_sink(gstPipeline);
 	ofLogNotice("ofGstUtils") << "setPipelineWithSink(): gstreamer pipeline: " << pipeline;
 
 	if(error!=NULL){
@@ -634,18 +634,16 @@ bool ofGstUtils::gstHandleMessage(GstBus * bus, GstMessage * msg){
 											GST_SEEK_TYPE_SET,
 											0,
 											GST_SEEK_TYPE_SET,
-											durationNanos)) {
+											-1)) {
 							ofLogWarning("ofGstUtils") << "gstHandleMessage(): unable to seek";
 						}
 					}else if(speed<0){
-						if(!gst_element_seek(GST_ELEMENT(gstPipeline),
-											speed,
-											format,
-											flags,
-											GST_SEEK_TYPE_SET,
-											durationNanos,
-											GST_SEEK_TYPE_NONE,
-											0)) {
+						if(!gst_element_seek(GST_ELEMENT(gstPipeline),speed, 	format,
+								flags,
+								GST_SEEK_TYPE_SET,
+								0,
+								GST_SEEK_TYPE_SET,
+								durationNanos-1000000)) {
 							ofLogWarning("ofGstUtils") << "gstHandleMessage(): unable to seek";
 						}
 					}
